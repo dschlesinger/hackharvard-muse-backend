@@ -1,0 +1,21 @@
+[project]
+name = "hackharvard-muse-backend"
+version = "0.0.0"
+authors = [
+  { name="Denali Schlesinger", email="dsch28@bu.edu" },
+]
+description = "Backend for controlling keyboard with blink combos"
+readme = "README.md"
+requires-python = ">=3.12"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+
+[project.scripts]
+blink-key-bind-run = "main.cli:main" # Maps 'mytool' command to 'cli' function in mycli.main module
+
+[project.urls]
+Homepage = "https://github.com/dschlesinger/hackharvard-muse-backend"
