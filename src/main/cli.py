@@ -51,7 +51,11 @@ def main() -> None:
 
                 continue
 
-            means = buffer[buffer != 0].reshape((4, -1)).mean(axis=1)
+            means = buffer[:, np.any(buffer != 0, axis=0)].reshape((4, -1)).mean(axis=1)
+
+            # Update buffer
+            buffer[:, :-1] = buffer[:, 1:]
+            buffer[:, -1] = current.flatten()
 
             sv = [SensorCurrent(s, v) for s, v in zip(SENSORS, current.flatten().tolist())]
 
