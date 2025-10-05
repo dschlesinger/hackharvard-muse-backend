@@ -8,6 +8,7 @@ from events.handler import handle_event_snapshot, SENSORS, SensorCurrent, Emitte
     EventInProgress, CompletedEvent, get_count_peaks
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 
@@ -30,6 +31,17 @@ key_binding = {
 }
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",  # your Vite dev server
+        "http://127.0.0.1:5173",  # optional, some setups use this
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Request model
 class KeyBindingUpdate(BaseModel):
