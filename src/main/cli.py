@@ -111,7 +111,11 @@ def muse_handler() -> None:
                 timeout=1, max_samples=MAX_SAMPLES_PER_TIME_STEP)
             
             # Remove heart rate and turn into (CHANENLS, SAMPLES)
-            current, timestamp = np.array(eeg_data).T[:4], timestamp[0]
+            try:
+                current, timestamp = np.array(eeg_data).T[:4], timestamp[0]
+            except IndexError:
+                print('Encountered index error skipping this iteration')
+                continue
             
             # Make sure we get a sample
             if current.shape != (4, 1):
