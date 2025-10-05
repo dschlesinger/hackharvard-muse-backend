@@ -15,7 +15,7 @@ license = "MIT"
 license-files = ["LICEN[CS]E*"]
 
 [project.scripts]
-blink-key-bind-run = "main.cli:main" # Maps 'mytool' command to 'cli' function in mycli.main module
+blinklet = "main.cli:main" # Maps 'mytool' command to 'cli' function in mycli.main module
 
 [project.urls]
 Homepage = "https://github.com/dschlesinger/hackharvard-muse-backend"
