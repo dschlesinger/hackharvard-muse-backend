@@ -1,9 +1,18 @@
-import numpy as np, time
+import numpy as np, time, pyautogui, threading, uvicorn, \
+        sys, signal
+
 
 from pylsl import StreamInlet, resolve_byprop  # Module to receive EEG data
 from events.math import smooth_array
 from events.handler import handle_event_snapshot, SENSORS, SensorCurrent, EmittedEvent, \
     EventInProgress, CompletedEvent, get_count_peaks
+
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import Optional
+
+# Add a lock for safety
+key_binding_lock = threading.Lock()
 
 # Settings
 BUFFER_LEN: int = 500
@@ -12,7 +21,67 @@ BUFFER_SIZE: int = 1000
 LAG_ENCOUNTER: float = 0.3
 SEARCH_ZONE: float = 0.7
 
+# lambda: pyautogui.click()
+key_binding = {
+    'Single Blink': 'down',
+    'Double Blink': 'up',
+    'Left Look': 'left',
+    'Right Look': 'right',
+}
+
+app = FastAPI()
+
+# Request model
+class KeyBindingUpdate(BaseModel):
+    event_name: str  # e.g., "Single Blink"
+    key: str         # e.g., "space"
+
+@app.post("/update-keybindings")
+def update_keybindings(binding: KeyBindingUpdate):
+    """Update a single key binding"""
+    
+    # Check if event exists
+    if binding.event_name not in key_binding:
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Event '{binding.event_name}' not found. Valid events: {list(key_binding.keys())}"
+        )
+    
+    # Update the binding
+    with key_binding_lock:
+        old_key = key_binding[binding.event_name]
+        key_binding[binding.event_name] = binding.key
+
+    print(key_binding)
+
+    return {
+        "message": "Key binding updated successfully",
+        "event": binding.event_name,
+        "old_key": old_key,
+        "new_key": binding.key,
+        "all_bindings": key_binding
+    }
+
+
 def main() -> None:
+    """Launch the FastAPI server"""
+
+    # Launch muse handler on thread
+    server_thread = threading.Thread(target=muse_handler, daemon=True)
+    server_thread.start()
+
+    port: int = 4545
+
+    print(f'Launching server on {port}')
+
+    uvicorn.run(
+        "main.cli:app",
+        host="0.0.0.0",
+        port=port,
+        reload=False  # For deployment
+    )
+
+def muse_handler() -> None:
 
     print('Looking for an EEG stream...')
     streams = resolve_byprop('type', 'EEG', timeout=5)
@@ -139,7 +208,13 @@ def main() -> None:
 
             if event:
 
-                print(event.name)
+                with key_binding_lock:
+
+                    print(event.name, key_binding)
+
+                    kb = key_binding[event.name]
+
+                if kb: kb() if hasattr(kb, '__call__') else pyautogui.press(kb)
 
     except KeyboardInterrupt:
 

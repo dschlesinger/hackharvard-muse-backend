@@ -1,3 +1,6 @@
 muselsl
 matplotlib
 numpy
+pyautogui
+fastapi
+uvicorn
