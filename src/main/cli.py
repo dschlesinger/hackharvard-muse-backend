@@ -1,9 +1,16 @@
-import numpy as np
+import numpy as np, time
 
 from pylsl import StreamInlet, resolve_byprop  # Module to receive EEG data
+from events.math import smooth_array
+from events.handler import handle_event_snapshot, SENSORS, SensorCurrent, EmittedEvent, \
+    EventInProgress, CompletedEvent, get_count_peaks
 
+# Settings
 BUFFER_LEN: int = 500
 MAX_SAMPLES_PER_TIME_STEP: int = 1
+BUFFER_SIZE: int = 1000
+LAG_ENCOUNTER: float = 0.3
+SEARCH_ZONE: float = 0.7
 
 def main() -> None:
 
@@ -18,7 +25,14 @@ def main() -> None:
     eeg_time_correction = inlet.time_correction()
 
     # Init buffer
-    buffer = np.zeros((BUFFER_LEN))
+    buffer = np.zeros((4, BUFFER_LEN))
+
+    buffer[:, -1] = np.array([1, 1, 1, 1])
+
+    last_key_bind = time.time()
+
+    continuing_events = []
+    completed_events_buffer = []
 
     try:
 
@@ -28,18 +42,100 @@ def main() -> None:
                 timeout=1, max_samples=MAX_SAMPLES_PER_TIME_STEP)
             
             # Remove heart rate and turn into (CHANENLS, SAMPLES)
-            eeg_data, timestamp = np.array(eeg_data).T[:4], np.array(timestamp)
+            current, timestamp = np.array(eeg_data).T[:4], timestamp[0]
             
             # Make sure we get a sample
-            if eeg_data.shape != (4, 1):
+            if current.shape != (4, 1):
 
                 print(f'Skipping chunk data of shape {eeg_data.shape}')
 
                 continue
 
-            
+            means = buffer[buffer != 0].reshape((4, -1)).mean(axis=1)
 
-            break
+            sv = [SensorCurrent(s, v) for s, v in zip(SENSORS, current.flatten().tolist())]
+
+            continuing_events, compe = handle_event_snapshot(sv, continuing_events, means, timestamp)
+
+            completed_events_buffer.extend(compe)
+
+            # Get all recent in buffer, do not delete here
+            recent_events = [e for e in completed_events_buffer if timestamp - e.end < SEARCH_ZONE]
+
+            # Take out trash
+            if len(completed_events_buffer) > 50:
+                completed_events_buffer = recent_events.copy()
+
+            event_latency_trigger = any([LAG_ENCOUNTER < timestamp - re.end < SEARCH_ZONE for re in recent_events])
+            with_in_timeout = timestamp - last_key_bind < SEARCH_ZONE
+
+            # Only trigger if there is a recent event between 0.4 and 0.5 seconds ago and its been 0.5 seconds since the last key binding
+            if not event_latency_trigger or with_in_timeout:
+
+                continue
+
+            blue_count_negative_l = get_count_peaks(recent_events, 'TP9', level='large', location='negative')
+            red_count_negative_l = get_count_peaks(recent_events, 'TP10', level='large', location='negative')
+            blue_count_negative = get_count_peaks(recent_events, 'TP9', location='negative')
+            red_count_negative = get_count_peaks(recent_events, 'TP10', location='negative')
+            blue_count_positive_l = get_count_peaks(recent_events, 'TP9', level='large', location='positive')
+            red_count_positive_l = get_count_peaks(recent_events, 'TP10', level='large', location='positive')
+
+            orange_count_positive_l = get_count_peaks(recent_events, 'AF7', level='large', location='positive')
+            orange_count_negative_l = get_count_peaks(recent_events, 'AF7', level='large', location='negative')
+
+            event = None
+            
+            # Double Blink
+            if (blue_count_negative >= 2 or red_count_negative >= 2) or (blue_count_negative_l == 1 and blue_count_positive_l == 1 and red_count_negative_l == 1 and red_count_positive_l == 1):
+
+                event = EmittedEvent(
+                    name='Double Blink',
+                    time=timestamp,
+                )
+            
+            # Single Blink
+            elif (blue_count_negative_l == 1 and red_count_negative_l == 1):
+
+                event = EmittedEvent(
+                    name='Single Blink',
+                    time=timestamp,
+
+                )
+
+            # else using orange
+            elif (orange_count_negative_l) and (orange_count_positive_l):
+
+                # if orange up before orange down its a left else right
+                orange_up = [re for re in recent_events if re.level == 'large' and re.sensor == 'AF7' and re.location == 'positive'][0]
+                orange_down = [re for re in recent_events if re.level == 'large' and re.sensor == 'AF7' and re.location == 'negative'][0]
+
+                if orange_down.end > orange_up.end:
+
+                    event = EmittedEvent(
+                        name='Left Look',
+                        time=timestamp,
+                    )
+
+                else:
+
+                    event = EmittedEvent(
+                        name='Right Look',
+                        time=timestamp,
+                    )
+
+            if event is not None and event.is_event:
+
+                recent_events = []
+
+                # If we do an event update key bindings
+                last_key_bind = timestamp
+
+                # print([str(e) for e in recent_events], event, sep='\n')
+
+            if event:
+
+                print(event.name)
 
     except KeyboardInterrupt:
 
