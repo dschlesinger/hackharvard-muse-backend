@@ -23,10 +23,10 @@ SEARCH_ZONE: float = 0.7
 
 # lambda: pyautogui.click()
 key_binding = {
-    'Single Blink': 'down',
-    'Double Blink': 'up',
-    'Left Look': 'left',
-    'Right Look': 'right',
+    'Single Blink': None,
+    'Double Blink': 'down',
+    'Left Look': lambda: pyautogui.click(),
+    'Right Look': 'up',
 }
 
 app = FastAPI()
@@ -208,9 +208,9 @@ def muse_handler() -> None:
 
             if event:
 
-                with key_binding_lock:
+                print(event.name)
 
-                    print(event.name, key_binding)
+                with key_binding_lock:
 
                     kb = key_binding[event.name]
 
