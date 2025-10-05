@@ -22,13 +22,8 @@ BUFFER_SIZE: int = 1000
 LAG_ENCOUNTER: float = 0.3
 SEARCH_ZONE: float = 0.7
 
-# lambda: pyautogui.click()
-key_binding = {
-    'Single Blink': None,
-    'Double Blink': 'down',
-    'Left Look': lambda: pyautogui.click(),
-    'Right Look': 'up',
-}
+from keybindings.presets import REELS, SLIDES, SNAKE
+key_binding = SLIDES
 
 app = FastAPI()
 
