@@ -23,7 +23,7 @@ LAG_ENCOUNTER: float = 0.3
 SEARCH_ZONE: float = 0.7
 
 from keybindings.presets import REELS, SLIDES, SNAKE
-key_binding = SLIDES
+key_binding = REELS
 
 app = FastAPI()
 
