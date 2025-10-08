@@ -36,4 +36,4 @@ Start-Process -NoNewWindow -FilePath "muselsl" -ArgumentList "view"
 
 # Run blinklet
 Write-Host "Running blinklet..."
-blinklet
+Start-Process blinklet -Verb RunAs

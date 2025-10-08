@@ -23,6 +23,7 @@ LAG_ENCOUNTER: float = 0.3
 SEARCH_ZONE: float = 0.7
 
 from keybindings.presets import REELS, SLIDES, SNAKE
+from keybindings.emit import emit_key_from_sequence
 key_binding = REELS
 
 app = FastAPI()
@@ -37,6 +38,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Create que
+blink_que = []
 
 # Request model
 class KeyBindingUpdate(BaseModel):
@@ -89,6 +93,7 @@ def main() -> None:
     )
 
 def muse_handler() -> None:
+    global blink_que
 
     print('Looking for an EEG stream...')
     streams = resolve_byprop('type', 'EEG', timeout=5)
@@ -221,11 +226,30 @@ def muse_handler() -> None:
 
                 print(event.name)
 
-                with key_binding_lock:
+                if event.name == 'Single Blink':
 
-                    kb = key_binding[event.name]
+                    emit_key_from_sequence(blink_que)
 
-                if kb: kb() if hasattr(kb, '__call__') else pyautogui.press(kb)
+                    blink_que = []
+
+                    continue
+
+                blink_que.append(event.name)
+
+                if len(blink_que) == 3:
+
+                    emit_key_from_sequence(blink_que)
+
+                    blink_que = []
+
+                    continue
+
+
+                # with key_binding_lock:
+
+                #     kb = key_binding[event.name]
+
+                # if kb: kb() if hasattr(kb, '__call__') else pyautogui.press(kb)
 
     except KeyboardInterrupt:
 
