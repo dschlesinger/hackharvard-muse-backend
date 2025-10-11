@@ -1,6 +1,6 @@
 import numpy as np, time, pyautogui, threading, uvicorn, \
-        sys, signal
-
+        sys, signal, pydirectinput
+from time import sleep
 
 from pylsl import StreamInlet, resolve_byprop  # Module to receive EEG data
 from events.math import smooth_array
@@ -23,7 +23,7 @@ LAG_ENCOUNTER: float = 0.3
 SEARCH_ZONE: float = 0.7
 
 from keybindings.presets import REELS, SLIDES, SNAKE
-from keybindings.emit import emit_key_from_sequence
+from keybindings.emit import emit_key_from_sequence, keys_down
 key_binding = REELS
 
 app = FastAPI()
@@ -95,12 +95,20 @@ def main() -> None:
 def muse_handler() -> None:
     global blink_que
 
-    print('Looking for an EEG stream...')
-    streams = resolve_byprop('type', 'EEG', timeout=5)
-    if len(streams) == 0:
-        raise RuntimeError('Can\'t find EEG stream.')
+    for attempt in range(1, 6):
+        print(f'Looking for an EEG stream... (attempt {attempt})')
+        streams = resolve_byprop('type', 'EEG', timeout=5)
+        if len(streams) == 0:
+            print('Can\'t find EEG stream.')
+        else:
+            break
+        sleep(2)
+    else:
+        raise Exception('Could not find EEG stream after multiple attempts')
     
     print(f'Found stream {streams[0].source_id()}')
+
+    input('Wait until the EEG stream has buffered: ')
 
     inlet = StreamInlet(streams[0], max_chunklen=12)
     eeg_time_correction = inlet.time_correction()
@@ -252,6 +260,10 @@ def muse_handler() -> None:
                 # if kb: kb() if hasattr(kb, '__call__') else pyautogui.press(kb)
 
     except KeyboardInterrupt:
+
+        for kd in keys_down:
+
+            pydirectinput.keyUp(kd)
 
         print('Keyboard interupt encountered, closing program')
 

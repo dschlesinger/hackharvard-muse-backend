@@ -13,6 +13,10 @@ classifiers = [
 ]
 license = "MIT"
 license-files = ["LICEN[CS]E*"]
+dynamic = ["dependencies"]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
 
 [project.scripts]
 blinklet = "main.cli:main" # Maps 'mytool' command to 'cli' function in mycli.main module

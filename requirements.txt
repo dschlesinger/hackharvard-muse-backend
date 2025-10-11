@@ -2,5 +2,6 @@ muselsl
 matplotlib
 numpy
 pyautogui
+pydirectinput
 fastapi
 uvicorn
